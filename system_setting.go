@@ -10,6 +10,7 @@ import (
 var (
 	ErrInvalidBrightness   = fmt.Errorf("brightness should be in range of 0~100")
 	ErrInvalidWhiteBalance = fmt.Errorf("white balance should be in range of 0~100")
+	ErrInvalidScore        = fmt.Errorf("score should be in range of 0~999")
 )
 
 func (c *Client) SetBrightness(brightness int) error {
