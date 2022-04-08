@@ -11,6 +11,9 @@ var (
 	ErrInvalidBrightness   = fmt.Errorf("brightness should be in range of 0~100")
 	ErrInvalidWhiteBalance = fmt.Errorf("white balance should be in range of 0~100")
 	ErrInvalidScore        = fmt.Errorf("score should be in range of 0~999")
+	ErrInvalidPicNum       = fmt.Errorf("pic num should be smaller than 60")
+	ErrInvalidPicWidth     = fmt.Errorf("pic width should be 16, 32 or 64")
+	ErrNotImplemented      = fmt.Errorf("not implemented")
 )
 
 func (c *Client) SetBrightness(brightness int) error {
