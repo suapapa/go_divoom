@@ -48,7 +48,7 @@ type Client struct {
 func NewClient(d *Device) *Client {
 	return &Client{
 		dev: d,
-		url: fmt.Sprintf("https://%s:80/post", d.DevicePrivateIP),
+		url: fmt.Sprintf("http://%s:80/post", d.DevicePrivateIP),
 	}
 }
 

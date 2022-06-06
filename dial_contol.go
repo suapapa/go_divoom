@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/pkg/errors"
 )
@@ -38,7 +39,7 @@ func DialType() ([]string, error) {
 type dialListResult struct {
 	ReturnCode    int    `json:"ReturnCode"`
 	ReturnMessage string `json:"ReturnMessage"`
-	TotalNum      int    `json:"TotalNum"`
+	TotalNum      string `json:"TotalNum"`
 	DialList      []Dial `json:"DialList"`
 }
 type Dial struct {
@@ -46,7 +47,7 @@ type Dial struct {
 	Name string `json:"Name"`
 }
 
-func DialList(dialType string, page int) ([]Dial, error) {
+func DialList(dialType string, page int) ([]Dial, int, error) {
 	var buf bytes.Buffer
 	data := map[string]interface{}{
 		"DialType": dialType,
@@ -56,30 +57,30 @@ func DialList(dialType string, page int) ([]Dial, error) {
 	jEnc := json.NewEncoder(&buf)
 	err := jEnc.Encode(&data)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, errors.Wrap(err, "fail to get dial list")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, "https://app.divoom-gz.com/Channel/GetDialList", &buf)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, errors.Wrap(err, "fail to get dial list")
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, errors.Wrap(err, "fail to get dial list")
 	}
 	defer resp.Body.Close()
 
 	var ret dialListResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, errors.Wrap(err, "fail to get dial list")
 	}
 
 	if ret.ReturnCode != 0 {
-		return nil, fmt.Errorf("fail to get dial list: %s", ret.ReturnMessage)
+		return nil, 0, fmt.Errorf("fail to get dial list: %s", ret.ReturnMessage)
 	}
-
-	return ret.DialList, nil
+	tot, _ := strconv.Atoi(ret.TotalNum)
+	return ret.DialList, tot, nil
 }
 
 type errorCode struct {
@@ -87,6 +88,11 @@ type errorCode struct {
 }
 
 func (c *Client) SelectFacesChannel(id int) error {
+	err := c.SelectChannel(ChannelFaces)
+	if err != nil {
+		return errors.Wrap(err, "fail to select channel to face")
+	}
+
 	cmd := "Channel/SetClockSelectId"
 	data := map[string]interface{}{
 		"Command": cmd,
@@ -118,7 +124,7 @@ type FaceID struct {
 }
 
 func (c *Client) GetSelectFaceID() (*FaceID, error) {
-	cmd := "Channel/SetClockInfo"
+	cmd := "Channel/GetClockInfo"
 	data := map[string]interface{}{
 		"Command": cmd,
 	}

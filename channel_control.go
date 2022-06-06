@@ -78,10 +78,15 @@ func (c *Client) CustomChannel(idx CustomIdx) error {
 }
 
 func (c *Client) VisualizerChannel(idx int) error {
+	err := c.SelectChannel(ChannelVisualizer)
+	if err != nil {
+		return errors.Wrap(err, "fail to set channel to visualizer")
+	}
+
 	cmd := "Channel/SetEqPosition"
 	data := map[string]interface{}{
-		"Command":     cmd,
-		"SelectIndex": idx,
+		"Command":    cmd,
+		"EqPosition": idx,
 	}
 
 	resp, err := c.do(data)
@@ -107,15 +112,20 @@ type CloudChannelIdx int
 
 const (
 	CloudChannelRecommendGallery CloudChannelIdx = iota
-	CloudChannelFacorite
+	CloudChannelFavorite
 	CloudChannelSubscribeArtist
 )
 
-func (c *Client) CloudChannel(idx int) error {
-	cmd := "Channel/SetEqPosition"
+func (c *Client) CloudChannel(idx CloudChannelIdx) error {
+	err := c.SelectChannel(ChannelCloud)
+	if err != nil {
+		return errors.Wrap(err, "fail to set channel to cloud")
+	}
+
+	cmd := "Channel/CloudIndex"
 	data := map[string]interface{}{
-		"Command":    cmd,
-		"CloudIndex": idx,
+		"Command": cmd,
+		"Index":   idx,
 	}
 
 	resp, err := c.do(data)
