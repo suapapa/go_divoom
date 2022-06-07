@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -95,7 +96,27 @@ func (c *Client) ResetSendingAnimationPicID() error {
 	return nil
 }
 
-func (c *Client) SendAnimation(width, id, speed int, picDatas [][]byte) error {
+func (c *Client) SendAnimationImgs(id, speedMs int, imgs []image.Image) error {
+	if len(imgs) < 1 {
+		return fmt.Errorf("want more than one image")
+	}
+	w0, h0 := imgs[0].Bounds().Dx(), imgs[0].Bounds().Dy()
+	if w0 != h0 {
+		return fmt.Errorf("want rectangle image")
+	}
+	if w0 != 64 && w0 != 32 && w0 != 16 {
+		return ErrInvalidPicWidth
+	}
+
+	picDatas := make([][]byte, len(imgs))
+	for i := range picDatas {
+		picDatas[i] = imgToRGB24Bytes(imgs[i])
+	}
+
+	return c.SendAnimation(w0, id, speedMs, picDatas)
+}
+
+func (c *Client) SendAnimation(width, id, speedMs int, picDatas [][]byte) error {
 	picNum := len(picDatas)
 	if picNum > 60 || picNum < 0 {
 		return ErrInvalidPicNum
@@ -115,7 +136,7 @@ func (c *Client) SendAnimation(width, id, speed int, picDatas [][]byte) error {
 			"PicWidth":  width,
 			"PicOffset": offset,
 			"PicID":     id,
-			"PicSpeed":  speed,
+			"PicSpeed":  speedMs,
 			"PicData":   base64.StdEncoding.EncodeToString(picData),
 		}
 		resp, err := c.do(data)
@@ -136,6 +157,23 @@ func (c *Client) SendAnimation(width, id, speed int, picDatas [][]byte) error {
 	}
 
 	return nil
+}
+
+func imgToRGB24Bytes(img image.Image) []byte {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	imgData := make([]byte, w*h*3)
+	var i int
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			r8, g8, b8 := r>>8, g>>8, b>>8
+			imgData[i] = byte(r8)
+			imgData[i+1] = byte(g8)
+			imgData[i+2] = byte(b8)
+			i += 3
+		}
+	}
+	return imgData
 }
 
 type TextDir int

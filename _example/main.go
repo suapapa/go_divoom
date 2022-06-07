@@ -101,11 +101,8 @@ func main() {
 
 	//Animation
 	if flagAnimationDemo {
-		// err = c.SelectChannel(divoom.ChannelCustom)
-		// chk(err)
-		// picID, err := c.GetSendingAnimationPicID()
-		// chk(err)
-		// log.Printf("picID=%d\n", picID)
+		time.Sleep(3 * time.Second)
+		log.Println("=== Animation")
 		err := c.ResetSendingAnimationPicID()
 		chk(err)
 
@@ -115,23 +112,11 @@ func main() {
 		chk(err)
 		log.Printf("imgFmt: %s\n", imgFmt)
 
-		imgData := make([]byte, 64*64*3)
-		var i int
-		for y := 0; y < 64; y++ {
-			for x := 0; x < 64; x++ {
-				r, g, b, _ := img.At(x, y).RGBA()
-				r8, g8, b8 := r>>8, g>>8, b>>8
-				imgData[i] = byte(r8)
-				imgData[i+1] = byte(g8)
-				imgData[i+2] = byte(b8)
-				i += 3
-			}
-		}
+		c.SendAnimationImgs(1, 1000, []image.Image{img})
 
-		imgDatas := make([][]byte, 1)
-		imgDatas[0] = imgData
-
-		c.SendAnimation(64, 1, 1000, imgDatas)
+		picID, err := c.GetSendingAnimationPicID()
+		chk(err)
+		log.Printf("picID=%d\n", picID)
 	}
 
 	fID, err := c.GetSelectFaceID()
