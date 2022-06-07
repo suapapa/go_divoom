@@ -62,11 +62,12 @@ func (c *Client) GetSendingAnimationPicID() (int, error) {
 		return -1, errors.Wrap(err, "fail to get sending animation pic id")
 	}
 
-	if ret["error_code"] != 0 {
-		return -1, fmt.Errorf("fail to get sending animation pic id: %d", ret["error_code"])
+	if ret["error_code"] != float64(0) {
+		return -1, fmt.Errorf("fail to get sending animation pic id: %v", ret["error_code"])
 	}
 
-	return ret["PicId"].(int), nil
+	picID := ret["PicId"].(float64)
+	return int(picID), nil
 }
 
 func (c *Client) ResetSendingAnimationPicID() error {
