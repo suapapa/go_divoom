@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/gif"
 	"net/http"
 
+	"github.com/nfnt/resize"
+	"github.com/oliamb/cutter"
 	"github.com/pkg/errors"
 )
 
@@ -96,7 +99,57 @@ func (c *Client) ResetSendingAnimationPicID() error {
 	return nil
 }
 
-func (c *Client) SendAnimationImgs(id, speedMs int, imgs []image.Image) error {
+func (c *Client) SendAnimationGif(id int, gifImg *gif.GIF) error {
+	frameCnt := len(gifImg.Image)
+	imgs := make([]image.Image, frameCnt)
+	delayMSecs := make([]int, frameCnt)
+
+	// find short length in w and h
+	bound := gifImg.Image[0].Bounds()
+	w, h := bound.Dx(), bound.Dy()
+	var length int
+	if w < h {
+		length = int(w)
+	} else {
+		length = int(h)
+	}
+
+	var targetLength uint
+	if length >= 64 {
+		targetLength = 64
+	} else if length >= 32 {
+		targetLength = 32
+	} else {
+		targetLength = 16
+	}
+
+	// crop center rect
+	cutterCfg := cutter.Config{
+		Width:  length,
+		Height: length,
+		Mode:   cutter.Centered,
+	}
+
+	for i := 0; i < frameCnt; i++ {
+		cImg, err := cutter.Crop(gifImg.Image[i], cutterCfg)
+		if err != nil {
+			return errors.Wrap(err, "fail to set gif")
+		}
+
+		// resize
+		if uint(length) != targetLength {
+			imgs[i] = resize.Resize(targetLength, targetLength, cImg, resize.Lanczos3)
+		} else {
+			imgs[i] = cImg
+		}
+
+		delayMSecs[i] = gifImg.Delay[i] * 10
+	}
+
+	return c.SendAnimationImgs(id, delayMSecs, imgs)
+}
+
+func (c *Client) SendAnimationImgs(id int, speedMSecs []int, imgs []image.Image) error {
 	if len(imgs) < 1 {
 		return fmt.Errorf("want more than one image")
 	}
@@ -113,10 +166,10 @@ func (c *Client) SendAnimationImgs(id, speedMs int, imgs []image.Image) error {
 		picDatas[i] = imgToRGB24Bytes(imgs[i])
 	}
 
-	return c.SendAnimation(w0, id, speedMs, picDatas)
+	return c.SendAnimation(w0, id, speedMSecs, picDatas)
 }
 
-func (c *Client) SendAnimation(width, id, speedMs int, picDatas [][]byte) error {
+func (c *Client) SendAnimation(width, id int, speedMSecs []int, picDatas [][]byte) error {
 	picNum := len(picDatas)
 	if picNum > 60 || picNum < 0 {
 		return ErrInvalidPicNum
@@ -136,7 +189,7 @@ func (c *Client) SendAnimation(width, id, speedMs int, picDatas [][]byte) error 
 			"PicWidth":  width,
 			"PicOffset": offset,
 			"PicID":     id,
-			"PicSpeed":  speedMs,
+			"PicSpeed":  speedMSecs[offset],
 			"PicData":   base64.StdEncoding.EncodeToString(picData),
 		}
 		resp, err := c.do(data)
