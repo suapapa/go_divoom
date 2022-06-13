@@ -5,6 +5,7 @@ import (
 	"image"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	_ "image/png"
@@ -22,10 +23,10 @@ var (
 
 func main() {
 	flag.BoolVar(&flagPrintDialInfo, "i", false, "print dials and diallists info")
-	flag.BoolVar(&flagFacesDemo, "f", false, "print dials and diallists info")
-	flag.BoolVar(&flagVisualizerDemo, "v", false, "print dials and diallists info")
-	flag.BoolVar(&flagCloudDemo, "c", false, "print dials and diallists info")
-	flag.BoolVar(&flagAnimationDemo, "a", false, "print dials and diallists info")
+	flag.BoolVar(&flagFacesDemo, "f", false, "faces demo")
+	flag.BoolVar(&flagVisualizerDemo, "v", false, "visualizer demo")
+	flag.BoolVar(&flagCloudDemo, "c", false, "cloud demo")
+	flag.BoolVar(&flagAnimationDemo, "a", false, "animation demo")
 	flag.Parse()
 
 	if flagPrintDialInfo {
@@ -54,16 +55,21 @@ func main() {
 	c := divoom.NewClient(devices[0])
 
 	if flagFacesDemo {
-		time.Sleep(3 * time.Second)
-		log.Println("=== Faces chan")
-		err = c.SelectFacesChannel(12) // Faces chann, US Stock
+		chanNumStr := flag.Arg(0)
+		chanNum, err := strconv.Atoi(chanNumStr)
+		chk(err)
+
+		log.Printf("=== Faces chan: %d\n", chanNum)
+		err = c.SelectFacesChannel(chanNum)
 		chk(err)
 
 		time.Sleep(3 * time.Second)
 		log.Println("=== Faces chan")
-		fID, err := c.GetSelectFaceID() // {64, 100} Bitcoin=64, brightness=100
+		fID, err := c.GetSelectFaceID()
 		chk(err)
 		log.Println(fID)
+
+		time.Sleep(3 * time.Second)
 	}
 
 	// 화면조정 화면만 나와서 임시로 막음
@@ -112,7 +118,7 @@ func main() {
 		chk(err)
 		log.Printf("imgFmt: %s\n", imgFmt)
 
-		c.SendAnimationImgs(1, 1000, []image.Image{img})
+		c.SendAnimationImgs(1, []int{1000}, []image.Image{img})
 
 		picID, err := c.GetSendingAnimationPicID()
 		chk(err)
