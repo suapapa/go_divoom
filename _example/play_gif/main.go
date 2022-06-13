@@ -10,7 +10,11 @@ import (
 )
 
 func main() {
-	f, err := os.Open("pepe.gif")
+	if len(os.Args) < 2 {
+		log.Fatal("gimme gif")
+	}
+
+	f, err := os.Open(os.Args[1])
 	chk(err)
 
 	g, err := gif.DecodeAll(f)
