@@ -7,6 +7,7 @@ Go package for Divoom Web API, such as Pixoo64.
 - [doc](https://pkg.go.dev/github.com/suapapa/go_divoom)
 
 Install:
+
 ```bash
 go get github.com/suapapa/go_divoom
 ```
