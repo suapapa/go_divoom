@@ -8,8 +8,10 @@ import (
 	"strconv"
 	"time"
 
+	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/nfnt/resize"
 	divoom "github.com/suapapa/go_divoom"
 )
 
@@ -112,13 +114,20 @@ func main() {
 		err := c.ResetSendingAnimationPicID()
 		chk(err)
 
-		f, err := os.Open("Lenna_64.png")
-		chk(err)
-		img, imgFmt, err := image.Decode(f)
-		chk(err)
-		log.Printf("imgFmt: %s\n", imgFmt)
+		var imgs []image.Image
+		var delays []int
+		for _, imgPath := range flag.Args() {
+			f, err := os.Open(imgPath)
+			chk(err)
+			img, imgFmt, err := image.Decode(f)
+			chk(err)
+			img = resize.Resize(64, 64, img, resize.Lanczos3)
+			imgs = append(imgs, img)
+			delays = append(delays, 10*1000)
+			log.Printf("imgPath: %s, imgFmt: %s\n", imgPath, imgFmt)
+		}
 
-		c.SendAnimationImgs(1, []int{1000}, []image.Image{img})
+		c.SendAnimationImgs(1, delays, imgs)
 
 		picID, err := c.GetSendingAnimationPicID()
 		chk(err)
