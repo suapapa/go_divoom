@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image"
 	"image/gif"
-	"net/http"
 
 	"github.com/nfnt/resize"
 	"github.com/oliamb/cutter"
@@ -29,23 +28,12 @@ func (c *Client) PlayGif(t PlayGIFType, name string) error {
 		"FileName": name,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to play gif")
-	}
-	defer resp.Body.Close()
+	return c.doAndCheckErrorCode(data, "fail to play gif")
+}
 
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to play gif")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to play gif: %d", ret.ErrorCode)
-	}
-
-	return nil
+type getSendingAnimationPicIDResult struct {
+	ErrorCode int `json:"error_code"`
+	PicID     int `json:"PicId"`
 }
 
 func (c *Client) GetSendingAnimationPicID() (int, error) {
@@ -58,20 +46,22 @@ func (c *Client) GetSendingAnimationPicID() (int, error) {
 	if err != nil {
 		return -1, errors.Wrap(err, "fail to get sending animation pic id")
 	}
-	defer resp.Body.Close()
 
-	ret := make(map[string]interface{})
+	var ret getSendingAnimationPicIDResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
+	closeErr := resp.Body.Close()
 	if err != nil {
 		return -1, errors.Wrap(err, "fail to get sending animation pic id")
 	}
-
-	if ret["error_code"] != float64(0) {
-		return -1, fmt.Errorf("fail to get sending animation pic id: %v", ret["error_code"])
+	if closeErr != nil {
+		return -1, errors.Wrap(closeErr, "fail to get sending animation pic id")
 	}
 
-	picID := ret["PicId"].(float64)
-	return int(picID), nil
+	if ret.ErrorCode != 0 {
+		return -1, fmt.Errorf("fail to get sending animation pic id: %d", ret.ErrorCode)
+	}
+
+	return ret.PicID, nil
 }
 
 func (c *Client) ResetSendingAnimationPicID() error {
@@ -80,23 +70,7 @@ func (c *Client) ResetSendingAnimationPicID() error {
 		"Command": cmd,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to get sending animation pic id")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to get sending animation pic id")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to get sending animation pic id: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to get sending animation pic id")
 }
 
 func (c *Client) SendAnimationGif(id int, gifImg *gif.GIF) error {
@@ -174,6 +148,9 @@ func (c *Client) SendAnimation(width, id int, speedMSecs []int, picDatas [][]byt
 	if picNum > 60 || picNum < 0 {
 		return ErrInvalidPicNum
 	}
+	if len(speedMSecs) != picNum {
+		return fmt.Errorf("speedMSecs length mismatch: got %d, want %d", len(speedMSecs), picNum)
+	}
 
 	if width != 64 && width != 32 && width != 16 {
 		return ErrInvalidPicWidth
@@ -196,12 +173,15 @@ func (c *Client) SendAnimation(width, id int, speedMSecs []int, picDatas [][]byt
 		if err != nil {
 			return errors.Wrap(err, "fail to send animation")
 		}
-		defer resp.Body.Close()
 
 		var ret errorCode
 		err = json.NewDecoder(resp.Body).Decode(&ret)
+		closeErr := resp.Body.Close()
 		if err != nil {
 			return errors.Wrap(err, "fail to send animation")
+		}
+		if closeErr != nil {
+			return errors.Wrap(closeErr, "fail to send animation")
 		}
 
 		if ret.ErrorCode != 0 {
@@ -272,23 +252,7 @@ func (c *Client) SendText(id, x, y int, dir TextDir, font TextFont, width int, s
 		"color":      color,
 		"align":      int(align),
 	}
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to send text")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to send text")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to send text: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to send text")
 }
 
 func (c *Client) ClearAllTextArea() error {
@@ -296,23 +260,7 @@ func (c *Client) ClearAllTextArea() error {
 	data := map[string]interface{}{
 		"Command": cmd,
 	}
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to clear all text area")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to clear all text area")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to clear all text area: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to clear all text area")
 }
 
 type getFontListResult struct {
@@ -330,16 +278,19 @@ type Font struct {
 }
 
 func GetFontList() ([]*Font, error) {
-	resp, err := http.Post("https://app.divoom-gz.com/Device/ReturnSameLANDevice", "", nil)
+	resp, err := defaultHTTPClient.Post("https://app.divoom-gz.com/Device/ReturnSameLANDevice", "", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get font list")
 	}
-	defer resp.Body.Close()
 
 	var ret getFontListResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
+	closeErr := resp.Body.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get font list")
+	}
+	if closeErr != nil {
+		return nil, errors.Wrap(closeErr, "fail to get font list")
 	}
 
 	if ret.ReturnCode != 0 {

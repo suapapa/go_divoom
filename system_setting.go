@@ -1,7 +1,6 @@
 package divoom
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -27,23 +26,7 @@ func (c *Client) SetBrightness(brightness int) error {
 		"Brightness": brightness,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set brightness")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set brightness")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set brightness: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set brightness")
 }
 
 func (c *Client) GetAllSetting() (map[string]interface{}, error) {
@@ -52,22 +35,21 @@ func (c *Client) GetAllSetting() (map[string]interface{}, error) {
 		"Command": cmd,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "fail to get all setting")
-	}
-	defer resp.Body.Close()
-
 	// TODO: make it to struct
 	ret := make(map[string]interface{})
-
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
+	if err := c.doAndDecode(data, &ret, "fail to get all setting"); err != nil {
 		return nil, errors.Wrap(err, "fail to get all setting")
 	}
-
-	if ret["error_code"] != 0 {
-		return nil, fmt.Errorf("fail to get all setting: %d", ret["error_code"])
+	rawCode, ok := ret["error_code"]
+	if !ok {
+		return nil, fmt.Errorf("fail to get all setting: missing error_code")
+	}
+	errorCodeNum, ok := rawCode.(float64)
+	if !ok {
+		return nil, fmt.Errorf("fail to get all setting: invalid error_code type %T", rawCode)
+	}
+	if int(errorCodeNum) != 0 {
+		return nil, fmt.Errorf("fail to get all setting: %d", int(errorCodeNum))
 	}
 
 	return ret, nil
@@ -81,23 +63,7 @@ func (c *Client) WeatherAreaSetting(long, lat string) error {
 		"Latitude": lat,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set weather area")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set weather area")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set weather area: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set weather area")
 }
 
 func (c *Client) SetTimeZone(timezone string) error {
@@ -107,23 +73,7 @@ func (c *Client) SetTimeZone(timezone string) error {
 		"TimeZoneValue": timezone,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set time zone")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set time zone")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set time zone: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set time zone")
 }
 
 func (c *Client) SystemTime(utcTime string) error {
@@ -133,23 +83,7 @@ func (c *Client) SystemTime(utcTime string) error {
 		"Utc":     utcTime,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set utc time")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set utc time")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set utc time: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set utc time")
 }
 
 func (c *Client) ScreenSwitch(on bool) error {
@@ -163,23 +97,7 @@ func (c *Client) ScreenSwitch(on bool) error {
 		"OnOff":   val,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to switch screen")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to switch screen")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to switch screen: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to switch screen")
 }
 
 type DeviceTimeResult struct {
@@ -194,15 +112,8 @@ func (c *Client) GetDeviceTime() (*DeviceTimeResult, error) {
 		"Command": cmd,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "fail to get device time")
-	}
-	defer resp.Body.Close()
-
 	var ret DeviceTimeResult
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
+	if err := c.doAndDecode(data, &ret, "fail to get device time"); err != nil {
 		return nil, errors.Wrap(err, "fail to get device time")
 	}
 
@@ -227,23 +138,7 @@ func (c *Client) SetTemperatureMode(tempMode TempMode) error {
 		"Mode":    int(tempMode),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set temp mode")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set temp mode")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set temp mode: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set temp mode")
 }
 
 type RotationAngle int
@@ -262,23 +157,7 @@ func (c *Client) SetRotationAngle(angle RotationAngle) error {
 		"Mode":    int(angle),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set rotation angle")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set rotation angle")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set ratation angle: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set rotation angle")
 }
 
 type MirrorMode int
@@ -295,23 +174,7 @@ func (c *Client) SetMirrorMode(on MirrorMode) error {
 		"Mode":    int(on),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set mirror mode")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set mirror mode")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set mirror mode: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set mirror mode")
 }
 
 type HourMode int
@@ -328,23 +191,7 @@ func (c *Client) SetHourMode(hm HourMode) error {
 		"Mode":    int(hm),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set hour mode")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set hour mode")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set hour mode: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set hour mode")
 }
 
 func (c *Client) SetHighLightMode(on bool) error {
@@ -358,23 +205,7 @@ func (c *Client) SetHighLightMode(on bool) error {
 		"Mode":    int(val),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set high light mode")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set high light mode")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set high light mode: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set high light mode")
 }
 
 func (c *Client) SetWhiteBalance(r, g, b int) error {
@@ -390,22 +221,6 @@ func (c *Client) SetWhiteBalance(r, g, b int) error {
 		"BValue":  b,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set white balance")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set white balance")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set set white balance: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set white balance")
 
 }

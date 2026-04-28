@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -21,16 +22,19 @@ type Device struct {
 }
 
 func FindDevice() ([]*Device, error) {
-	resp, err := http.Post("https://app.divoom-gz.com/Device/ReturnSameLANDevice", "", nil)
+	resp, err := defaultHTTPClient.Post("https://app.divoom-gz.com/Device/ReturnSameLANDevice", "", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to find device")
 	}
-	defer resp.Body.Close()
 
 	var ret findResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
+	closeErr := resp.Body.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to find device")
+	}
+	if closeErr != nil {
+		return nil, errors.Wrap(closeErr, "fail to find device")
 	}
 
 	if ret.ReturnCode != 0 {
@@ -41,14 +45,18 @@ func FindDevice() ([]*Device, error) {
 }
 
 type Client struct {
-	dev *Device
-	url string
+	dev        *Device
+	url        string
+	httpClient *http.Client
 }
+
+var defaultHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
 func NewClient(d *Device) *Client {
 	return &Client{
-		dev: d,
-		url: fmt.Sprintf("http://%s:80/post", d.DevicePrivateIP),
+		dev:        d,
+		url:        fmt.Sprintf("http://%s:80/post", d.DevicePrivateIP),
+		httpClient: defaultHTTPClient,
 	}
 }
 
@@ -64,5 +72,6 @@ func (c *Client) do(data map[string]interface{}) (*http.Response, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to do")
 	}
-	return http.DefaultClient.Do(req)
+	req.Header.Set("Content-Type", "application/json")
+	return c.httpClient.Do(req)
 }

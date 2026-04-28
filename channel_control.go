@@ -1,9 +1,6 @@
 package divoom
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/pkg/errors"
 )
 
@@ -24,23 +21,7 @@ func (c *Client) SelectChannel(idx Channel) error {
 		"SelectIndex": int(idx),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to select channel: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to select channel")
 }
 
 type CustomIdx int
@@ -58,23 +39,7 @@ func (c *Client) CustomChannel(idx CustomIdx) error {
 		"CustomPageIndex": int(idx),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to select channel: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to select channel")
 }
 
 func (c *Client) VisualizerChannel(idx int) error {
@@ -89,23 +54,7 @@ func (c *Client) VisualizerChannel(idx int) error {
 		"EqPosition": idx,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to select channel: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to select channel")
 }
 
 type CloudChannelIdx int
@@ -128,23 +77,7 @@ func (c *Client) CloudChannel(idx CloudChannelIdx) error {
 		"Index":   idx,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to select channel")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to select channel: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to select channel")
 }
 
 type selectIdx struct {
@@ -157,15 +90,8 @@ func (c *Client) GetCurrentChannel() (Channel, error) {
 		"Command": cmd,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return ChannelInvalid, errors.Wrap(err, "fail to get select face id")
-	}
-	defer resp.Body.Close()
-
 	var ret selectIdx
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
+	if err := c.doAndDecode(data, &ret, "fail to get select face id"); err != nil {
 		return ChannelInvalid, errors.Wrap(err, "fail to get select face id")
 	}
 

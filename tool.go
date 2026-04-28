@@ -1,16 +1,12 @@
 package divoom
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 func (c *Client) SetCountdownTool(dur time.Duration, start bool) error {
 	m := int(dur.Minutes())
-	s := int(dur.Seconds()) / 60
+	s := int(dur.Seconds()) % 60
 	var v int
 	if start {
 		v = 1
@@ -24,23 +20,7 @@ func (c *Client) SetCountdownTool(dur time.Duration, start bool) error {
 		"Status":  v,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set countdown")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set countdown")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set countdown: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set countdown")
 }
 
 type StopwatchStatus int
@@ -58,23 +38,7 @@ func (c *Client) SetStopwatchTool(s StopwatchStatus) error {
 		"Status":  int(s),
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set stopwatch")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set stopwatch")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set stopwatch: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set stopwatch")
 }
 
 func (c *Client) SetScoreboardTool(red, blue int) error {
@@ -89,23 +53,7 @@ func (c *Client) SetScoreboardTool(red, blue int) error {
 		"RedScore":  red,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set scoreboard")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set scoreboard")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set scoreboard: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set scoreboard")
 }
 
 func (c *Client) SetNoiseTool(on bool) error {
@@ -120,21 +68,5 @@ func (c *Client) SetNoiseTool(on bool) error {
 		"NoiseStatus": v,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to set noise")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to set noise")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to set noise: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to set noise")
 }

@@ -17,16 +17,19 @@ type dialTypeResult struct {
 }
 
 func DialType() ([]string, error) {
-	resp, err := http.Post("https://app.divoom-gz.com/Channel/GetDialType", "", nil)
+	resp, err := defaultHTTPClient.Post("https://app.divoom-gz.com/Channel/GetDialType", "", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get dial type")
 	}
-	defer resp.Body.Close()
 
 	var ret dialTypeResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
+	closeErr := resp.Body.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get dial type")
+	}
+	if closeErr != nil {
+		return nil, errors.Wrap(closeErr, "fail to get dial type")
 	}
 
 	if ret.ReturnCode != 0 {
@@ -64,16 +67,19 @@ func DialList(dialType string, page int) ([]Dial, int, error) {
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "fail to get dial list")
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := defaultHTTPClient.Do(req)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "fail to get dial list")
 	}
-	defer resp.Body.Close()
 
 	var ret dialListResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
+	closeErr := resp.Body.Close()
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "fail to get dial list")
+	}
+	if closeErr != nil {
+		return nil, 0, errors.Wrap(closeErr, "fail to get dial list")
 	}
 
 	if ret.ReturnCode != 0 {
@@ -81,10 +87,6 @@ func DialList(dialType string, page int) ([]Dial, int, error) {
 	}
 	tot, _ := strconv.Atoi(ret.TotalNum)
 	return ret.DialList, tot, nil
-}
-
-type errorCode struct {
-	ErrorCode int `json:"error_code"`
 }
 
 func (c *Client) SelectFacesChannel(id int) error {
@@ -99,23 +101,7 @@ func (c *Client) SelectFacesChannel(id int) error {
 		"ClockId": id,
 	}
 
-	resp, err := c.do(data)
-	if err != nil {
-		return errors.Wrap(err, "fail to select faces channel")
-	}
-	defer resp.Body.Close()
-
-	var ret errorCode
-	err = json.NewDecoder(resp.Body).Decode(&ret)
-	if err != nil {
-		return errors.Wrap(err, "fail to select faces channel")
-	}
-
-	if ret.ErrorCode != 0 {
-		return fmt.Errorf("fail to select faces channel: %d", ret.ErrorCode)
-	}
-
-	return nil
+	return c.doAndCheckErrorCode(data, "fail to select faces channel")
 }
 
 type FaceID struct {
@@ -133,12 +119,15 @@ func (c *Client) GetSelectFaceID() (*FaceID, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get select face id")
 	}
-	defer resp.Body.Close()
 
 	var ret FaceID
 	err = json.NewDecoder(resp.Body).Decode(&ret)
+	closeErr := resp.Body.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get select face id")
+	}
+	if closeErr != nil {
+		return nil, errors.Wrap(closeErr, "fail to get select face id")
 	}
 
 	return &ret, nil
