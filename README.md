@@ -53,6 +53,11 @@ func main() {
 - `./_example/basic_controls`
 - `./_example/play_gif`
 
+## MCP Server
+
+This repository also includes an MCP server under `./cmd/divoom-mcp`.
+See `./cmd/divoom-mcp/README.md` for usage details.
+
 ## Development
 
 Run these checks before committing:
@@ -66,4 +71,4 @@ golangci-lint run
 
 ## References
 
-- Divoom API docs: <http://doc.divoom-gz.com/web/#/12?page_id=143>
+- [Divoom API docs](https://docin.divoom-gz.com/web/#/5/23)
