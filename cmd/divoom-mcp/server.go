@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
@@ -13,9 +12,9 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
+
 
 	divoom "github.com/suapapa/go_divoom"
 )
@@ -959,84 +958,29 @@ func (s *mcpServer) newErrorResponse(id json.RawMessage, code int, message strin
 func serveStdio(s *mcpServer) error {
 	s.bindGeneratedTools()
 
-	reader := bufio.NewReader(os.Stdin)
-	writer := bufio.NewWriter(os.Stdout)
-	var writeMu sync.Mutex
+	dec := json.NewDecoder(os.Stdin)
+	enc := json.NewEncoder(os.Stdout)
 
 	for {
-		payload, err := readStdioMessage(reader)
-		if err != nil {
+		var req rpcRequest
+		if err := dec.Decode(&req); err != nil {
 			if err == io.EOF {
 				return nil
 			}
-			return err
+			return fmt.Errorf("decode error: %w", err)
 		}
 
-		var req rpcRequest
-		if err := json.Unmarshal(payload, &req); err != nil {
-			continue
-		}
 		resp := s.handleRequest(req)
 		if resp == nil {
 			continue
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			return err
-		}
 
-		writeMu.Lock()
-		err = writeStdioMessage(writer, data)
-		writeMu.Unlock()
-		if err != nil {
-			return err
+		if err := enc.Encode(resp); err != nil {
+			return fmt.Errorf("encode error: %w", err)
 		}
 	}
 }
 
-func readStdioMessage(r *bufio.Reader) ([]byte, error) {
-	contentLength := 0
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			break
-		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		if strings.EqualFold(strings.TrimSpace(parts[0]), "Content-Length") {
-			v, err := strconv.Atoi(strings.TrimSpace(parts[1]))
-			if err != nil {
-				return nil, err
-			}
-			contentLength = v
-		}
-	}
-	if contentLength <= 0 {
-		return nil, fmt.Errorf("missing content-length")
-	}
-
-	payload := make([]byte, contentLength)
-	if _, err := io.ReadFull(r, payload); err != nil {
-		return nil, err
-	}
-	return payload, nil
-}
-
-func writeStdioMessage(w *bufio.Writer, payload []byte) error {
-	if _, err := fmt.Fprintf(w, "Content-Length: %d\r\n\r\n", len(payload)); err != nil {
-		return err
-	}
-	if _, err := w.Write(payload); err != nil {
-		return err
-	}
-	return w.Flush()
-}
 
 type sseSession struct {
 	id      string
