@@ -1,7 +1,7 @@
 package divoom
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 type Channel int
@@ -45,7 +45,7 @@ func (c *Client) CustomChannel(idx CustomIdx) error {
 func (c *Client) VisualizerChannel(idx int) error {
 	err := c.SelectChannel(ChannelVisualizer)
 	if err != nil {
-		return errors.Wrap(err, "fail to set channel to visualizer")
+		return fmt.Errorf("fail to set channel to visualizer: %w", err)
 	}
 
 	cmd := "Channel/SetEqPosition"
@@ -68,7 +68,7 @@ const (
 func (c *Client) CloudChannel(idx CloudChannelIdx) error {
 	err := c.SelectChannel(ChannelCloud)
 	if err != nil {
-		return errors.Wrap(err, "fail to set channel to cloud")
+		return fmt.Errorf("fail to set channel to cloud: %w", err)
 	}
 
 	cmd := "Channel/CloudIndex"
@@ -92,7 +92,7 @@ func (c *Client) GetCurrentChannel() (Channel, error) {
 
 	var ret selectIdx
 	if err := c.doAndDecode(data, &ret, "fail to get select face id"); err != nil {
-		return ChannelInvalid, errors.Wrap(err, "fail to get select face id")
+		return ChannelInvalid, fmt.Errorf("fail to get select face id: %w", err)
 	}
 
 	return Channel(ret.SelectIdx), nil

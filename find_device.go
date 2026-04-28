@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 type findResult struct {
@@ -24,17 +22,17 @@ type Device struct {
 func FindDevice() ([]*Device, error) {
 	resp, err := defaultHTTPClient.Post("https://app.divoom-gz.com/Device/ReturnSameLANDevice", "", nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to find device")
+		return nil, fmt.Errorf("fail to find device: %w", err)
 	}
 
 	var ret findResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
 	closeErr := resp.Body.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to find device")
+		return nil, fmt.Errorf("fail to find device: %w", err)
 	}
 	if closeErr != nil {
-		return nil, errors.Wrap(closeErr, "fail to find device")
+		return nil, fmt.Errorf("fail to find device: %w", closeErr)
 	}
 
 	if ret.ReturnCode != 0 {
@@ -65,12 +63,12 @@ func (c *Client) do(data map[string]interface{}) (*http.Response, error) {
 	jEnc := json.NewEncoder(&buf)
 	err := jEnc.Encode(&data)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to do")
+		return nil, fmt.Errorf("fail to do: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, c.url, &buf)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to do")
+		return nil, fmt.Errorf("fail to do: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	return c.httpClient.Do(req)

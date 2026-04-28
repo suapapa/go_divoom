@@ -3,8 +3,6 @@ package divoom
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/pkg/errors"
 )
 
 type errorCode struct {
@@ -14,15 +12,15 @@ type errorCode struct {
 func (c *Client) doAndDecode(data map[string]interface{}, out interface{}, op string) error {
 	resp, err := c.do(data)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	decodeErr := json.NewDecoder(resp.Body).Decode(out)
 	closeErr := resp.Body.Close()
 	if decodeErr != nil {
-		return errors.Wrap(decodeErr, op)
+		return fmt.Errorf("%s: %w", op, decodeErr)
 	}
 	if closeErr != nil {
-		return errors.Wrap(closeErr, op)
+		return fmt.Errorf("%s: %w", op, closeErr)
 	}
 
 	return nil

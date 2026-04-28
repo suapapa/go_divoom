@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-
 	divoom "github.com/suapapa/go_divoom"
 )
 
@@ -185,7 +184,31 @@ func (s *mcpServer) registerTools() {
 	})
 
 	s.registerTool(mcpTool{
-		Name:        "play_gif",
+		Name:        "play_gif_file",
+		Description: "Play a local GIF file.",
+		InputSchema: schemaObject(
+			map[string]interface{}{
+				"path": schemaString("Path to the GIF file"),
+			},
+			[]string{"path"},
+		),
+		Handler: func(args map[string]interface{}) (interface{}, error) {
+			path, err := getString(args, "path", true)
+			if err != nil {
+				return nil, err
+			}
+
+			return s.withClient(func(c *divoom.Client) (interface{}, error) {
+				if err := c.PlayGifFile(path); err != nil {
+					return nil, err
+				}
+				return map[string]interface{}{"ok": true}, nil
+			})
+		},
+	})
+
+	s.registerTool(mcpTool{
+		Name:        "play_tf_gif",
 		Description: "Play a GIF file/folder/net source on device.",
 		InputSchema: schemaObject(
 			map[string]interface{}{
@@ -204,7 +227,7 @@ func (s *mcpServer) registerTools() {
 				return nil, err
 			}
 			return s.withClient(func(c *divoom.Client) (interface{}, error) {
-				if err := c.PlayGif(divoom.PlayGIFType(t), name); err != nil {
+				if err := c.PlayTFGif(divoom.PlayGifType(t), name); err != nil {
 					return nil, err
 				}
 				return map[string]interface{}{"ok": true}, nil
@@ -980,7 +1003,6 @@ func serveStdio(s *mcpServer) error {
 		}
 	}
 }
-
 
 type sseSession struct {
 	id      string

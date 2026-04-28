@@ -6,21 +6,21 @@ import (
 	"fmt"
 	"image"
 	"image/gif"
+	"os"
 
 	"github.com/nfnt/resize"
 	"github.com/oliamb/cutter"
-	"github.com/pkg/errors"
 )
 
-type PlayGIFType int
+type PlayGifType int
 
 const (
-	PlayGIFTypeFile PlayGIFType = iota
-	PlayGIFTypeFolder
-	PlayGIFTypeNet
+	PlayGifTypeFile PlayGifType = iota
+	PlayGifTypeFolder
+	PlayGifTypeNet
 )
 
-func (c *Client) PlayGif(t PlayGIFType, name string) error {
+func (c *Client) PlayTFGif(t PlayGifType, name string) error {
 	cmd := "Device/PlayTFGif"
 	data := map[string]interface{}{
 		"Command":  cmd,
@@ -41,20 +41,19 @@ func (c *Client) GetSendingAnimationPicID() (int, error) {
 	data := map[string]interface{}{
 		"Command": cmd,
 	}
-
 	resp, err := c.do(data)
 	if err != nil {
-		return -1, errors.Wrap(err, "fail to get sending animation pic id")
+		return -1, fmt.Errorf("fail to get sending animation pic id: %w", err)
 	}
 
 	var ret getSendingAnimationPicIDResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
 	closeErr := resp.Body.Close()
 	if err != nil {
-		return -1, errors.Wrap(err, "fail to get sending animation pic id")
+		return -1, fmt.Errorf("fail to get sending animation pic id: %w", err)
 	}
 	if closeErr != nil {
-		return -1, errors.Wrap(closeErr, "fail to get sending animation pic id")
+		return -1, fmt.Errorf("fail to get sending animation pic id: %w", closeErr)
 	}
 
 	if ret.ErrorCode != 0 {
@@ -107,7 +106,7 @@ func (c *Client) SendAnimationGif(id int, gifImg *gif.GIF) error {
 	for i := 0; i < frameCnt; i++ {
 		cImg, err := cutter.Crop(gifImg.Image[i], cutterCfg)
 		if err != nil {
-			return errors.Wrap(err, "fail to set gif")
+			return fmt.Errorf("fail to set gif: %w", err)
 		}
 
 		// resize
@@ -171,17 +170,17 @@ func (c *Client) SendAnimation(width, id int, speedMSecs []int, picDatas [][]byt
 		}
 		resp, err := c.do(data)
 		if err != nil {
-			return errors.Wrap(err, "fail to send animation")
+			return fmt.Errorf("fail to send animation: %w", err)
 		}
 
 		var ret errorCode
 		err = json.NewDecoder(resp.Body).Decode(&ret)
 		closeErr := resp.Body.Close()
 		if err != nil {
-			return errors.Wrap(err, "fail to send animation")
+			return fmt.Errorf("fail to send animation: %w", err)
 		}
 		if closeErr != nil {
-			return errors.Wrap(closeErr, "fail to send animation")
+			return fmt.Errorf("fail to send animation: %w", closeErr)
 		}
 
 		if ret.ErrorCode != 0 {
@@ -280,17 +279,17 @@ type Font struct {
 func GetFontList() ([]*Font, error) {
 	resp, err := defaultHTTPClient.Post("https://app.divoom-gz.com/Device/ReturnSameLANDevice", "", nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get font list")
+		return nil, fmt.Errorf("fail to get font list: %w", err)
 	}
 
 	var ret getFontListResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
 	closeErr := resp.Body.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get font list")
+		return nil, fmt.Errorf("fail to get font list: %w", err)
 	}
 	if closeErr != nil {
-		return nil, errors.Wrap(closeErr, "fail to get font list")
+		return nil, fmt.Errorf("fail to get font list: %w", closeErr)
 	}
 
 	if ret.ReturnCode != 0 {
@@ -303,4 +302,25 @@ func GetFontList() ([]*Font, error) {
 // TODO: TBD
 func (c *Client) SendDisplayList() error {
 	return ErrNotImplemented
+}
+
+// --- for mcp
+
+func (c *Client) PlayGifFile(gifPath string) error {
+	f, err := os.Open(gifPath)
+	if err != nil {
+		return fmt.Errorf("fail to play gif file: %w", err)
+	}
+	defer f.Close()
+
+	gifImg, err := gif.DecodeAll(f)
+	if err != nil {
+		return fmt.Errorf("fail to send animation gif path: %w", err)
+	}
+
+	if err := c.ResetSendingAnimationPicID(); err != nil {
+		return fmt.Errorf("fail to reset sending animation pic id: %w", err)
+	}
+
+	return c.SendAnimationGif(1, gifImg)
 }

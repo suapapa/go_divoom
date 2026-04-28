@@ -2,8 +2,6 @@ package divoom
 
 import (
 	"fmt"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -38,7 +36,7 @@ func (c *Client) GetAllSetting() (map[string]interface{}, error) {
 	// TODO: make it to struct
 	ret := make(map[string]interface{})
 	if err := c.doAndDecode(data, &ret, "fail to get all setting"); err != nil {
-		return nil, errors.Wrap(err, "fail to get all setting")
+		return nil, fmt.Errorf("fail to get all setting: %w", err)
 	}
 	rawCode, ok := ret["error_code"]
 	if !ok {
@@ -114,7 +112,7 @@ func (c *Client) GetDeviceTime() (*DeviceTimeResult, error) {
 
 	var ret DeviceTimeResult
 	if err := c.doAndDecode(data, &ret, "fail to get device time"); err != nil {
-		return nil, errors.Wrap(err, "fail to get device time")
+		return nil, fmt.Errorf("fail to get device time: %w", err)
 	}
 
 	if ret.ErrorCode != 0 {

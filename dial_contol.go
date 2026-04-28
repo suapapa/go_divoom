@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/pkg/errors"
 )
 
 type dialTypeResult struct {
@@ -19,17 +17,17 @@ type dialTypeResult struct {
 func DialType() ([]string, error) {
 	resp, err := defaultHTTPClient.Post("https://app.divoom-gz.com/Channel/GetDialType", "", nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get dial type")
+		return nil, fmt.Errorf("fail to get dial type: %w", err)
 	}
 
 	var ret dialTypeResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
 	closeErr := resp.Body.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get dial type")
+		return nil, fmt.Errorf("fail to get dial type: %w", err)
 	}
 	if closeErr != nil {
-		return nil, errors.Wrap(closeErr, "fail to get dial type")
+		return nil, fmt.Errorf("fail to get dial type: %w", closeErr)
 	}
 
 	if ret.ReturnCode != 0 {
@@ -60,26 +58,26 @@ func DialList(dialType string, page int) ([]Dial, int, error) {
 	jEnc := json.NewEncoder(&buf)
 	err := jEnc.Encode(&data)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, fmt.Errorf("fail to get dial list: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, "https://app.divoom-gz.com/Channel/GetDialList", &buf)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, fmt.Errorf("fail to get dial list: %w", err)
 	}
 	resp, err := defaultHTTPClient.Do(req)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, fmt.Errorf("fail to get dial list: %w", err)
 	}
 
 	var ret dialListResult
 	err = json.NewDecoder(resp.Body).Decode(&ret)
 	closeErr := resp.Body.Close()
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "fail to get dial list")
+		return nil, 0, fmt.Errorf("fail to get dial list: %w", err)
 	}
 	if closeErr != nil {
-		return nil, 0, errors.Wrap(closeErr, "fail to get dial list")
+		return nil, 0, fmt.Errorf("fail to get dial list: %w", closeErr)
 	}
 
 	if ret.ReturnCode != 0 {
@@ -92,7 +90,7 @@ func DialList(dialType string, page int) ([]Dial, int, error) {
 func (c *Client) SelectFacesChannel(id int) error {
 	err := c.SelectChannel(ChannelFaces)
 	if err != nil {
-		return errors.Wrap(err, "fail to select channel to face")
+		return fmt.Errorf("fail to select channel to face: %w", err)
 	}
 
 	cmd := "Channel/SetClockSelectId"
@@ -117,17 +115,17 @@ func (c *Client) GetSelectFaceID() (*FaceID, error) {
 
 	resp, err := c.do(data)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get select face id")
+		return nil, fmt.Errorf("fail to get select face id: %w", err)
 	}
 
 	var ret FaceID
 	err = json.NewDecoder(resp.Body).Decode(&ret)
 	closeErr := resp.Body.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to get select face id")
+		return nil, fmt.Errorf("fail to get select face id: %w", err)
 	}
 	if closeErr != nil {
-		return nil, errors.Wrap(closeErr, "fail to get select face id")
+		return nil, fmt.Errorf("fail to get select face id: %w", closeErr)
 	}
 
 	return &ret, nil
